@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Científicos más citados del mundo · Ranking Stanford-Elsevier 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+:root{
+  --surface:#fcfcfb; --panel:#ffffff; --line:#e4e3df; --grid:#efeeea;
+  --ink:#0b0b0b; --ink2:#52514e; --ink3:#7d7c78;
+  --accent:#2a78d6; --accent-weak:#cde2fb; --muted:#b9b8b3; --muted2:#dcdbd6;
+  --s100:#cde2fb; --s700:#0d366b; --nodata:#efeeea;
+  --good:#0ca30c; --critical:#d03b3b;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    --surface:#1a1a19; --panel:#222220; --line:#3a3a37; --grid:#2c2c2a;
+    --ink:#f0efec; --ink2:#c3c2b7; --ink3:#9a998f;
+    --accent:#3987e5; --accent-weak:#1c3a5e; --muted:#6c6b66; --muted2:#45443f;
+    --s100:#1c3a5e; --s700:#9ec5f4; --nodata:#2c2c2a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--surface);color:var(--ink);font-size:14px;line-height:1.45}
+header{padding:22px 28px 10px;max-width:1280px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--ink2);margin:0}
+nav{display:flex;gap:4px;flex-wrap:wrap;max-width:1280px;margin:10px auto 0;padding:0 28px;border-bottom:1px solid var(--line)}
+nav a{padding:9px 14px;color:var(--ink2);text-decoration:none;border-bottom:2px solid transparent;font-weight:500}
+nav a.on{color:var(--ink);border-bottom-color:var(--accent)}
+.filters{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.filters .in{max-width:1280px;margin:0 auto;padding:10px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.fl{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+select,input[type=search]{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:150px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;border:0;background:var(--panel);color:var(--ink2);padding:6px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+button.reset{font:inherit;font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:6px;padding:6px 10px;cursor:pointer}
+main{max-width:1280px;margin:0 auto;padding:18px 28px 40px}
+.view{display:none}.view.on{display:block}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card h3{margin:0 0 2px;font-size:15px;font-weight:600}
+.card .note{color:var(--ink3);font-size:12px;margin:0 0 10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.kpi .l{font-size:12px;color:var(--ink2)}
+.ctx{color:var(--ink2);margin:0 0 14px;font-size:13px}
+.ctx b{color:var(--ink)}
+svg text{fill:var(--ink2);font-size:11px;font-family:inherit}
+.bar{cursor:pointer}
+.tip{position:fixed;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);display:none;z-index:20;max-width:280px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-weight:600;color:var(--ink2);border-bottom:1px solid var(--line);padding:6px 6px;cursor:pointer;white-space:nowrap;position:sticky;top:0;background:var(--panel)}
+td{border-bottom:1px solid var(--grid);padding:5px 6px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.sel td{background:var(--accent-weak)}
+tbody tr{cursor:default}
+.scroll{max-height:460px;overflow:auto}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink2);margin:4px 0 8px;flex-wrap:wrap;align-items:center}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;background:var(--grid);font-size:11px;color:var(--ink2)}
+.method p,.method li{color:var(--ink2);max-width:860px}
+.method h3{margin-top:22px}
+footer{max-width:1280px;margin:0 auto;padding:16px 28px 30px;color:var(--ink3);font-size:12px;border-top:1px solid var(--line)}
+footer a,.method a{color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+@media (max-width:640px){header,nav,.filters .in,main,footer{padding-left:14px;padding-right:14px}.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Los científicos más citados del mundo</h1>
+  <p class="sub">Explorador del ranking Stanford-Elsevier (Ioannidis, versión 9, octubre de 2026): 2 % superior por subcampo o 100.000 primeros por indicador compuesto c.</p>
+</header>
+<nav id="nav">
+  <a href="#resumen" data-v="resumen">Resumen mundial</a>
+  <a href="#paises" data-v="paises">Países</a>
+  <a href="#instituciones" data-v="instituciones">Instituciones</a>
+  <a href="#disciplinas" data-v="disciplinas">Disciplinas</a>
+  <a href="#espana" data-v="espana">España en detalle</a>
+  <a href="#metodo" data-v="metodo">Método y fuentes</a>
+</nav>
+<div class="filters"><div class="in">
+  <div class="fl">Tabla<div class="seg" id="segT"><button data-t="0" class="on">Trayectoria</button><button data-t="1">Año 2025</button></div></div>
+  <label class="fl">Continente<select id="fCont"></select></label>
+  <label class="fl">País<select id="fCtry"></select></label>
+  <label class="fl">Disciplina<select id="fField"></select></label>
+  <label class="fl">Tipo de institución<select id="fType"></select></label>
+  <button class="reset" id="reset">Quitar filtros</button>
+</div></div>
+<main>
+<section class="view" id="v-resumen">
+  <p class="ctx" id="ctx1"></p>
+  <div class="kpis" id="kpis"></div>
+  <div class="card" style="margin-bottom:16px"><h3 id="mapT">Investigadores por país</h3><p class="note">Escala logarítmica. Pulsa un país para filtrar por él; vuelve a pulsarlo para quitar el filtro.</p><div id="map"></div><div id="mapLeg"></div></div>
+  <div class="grid g2">
+    <div class="card"><h3>Países con más investigadores</h3><p class="note">Los 15 primeros con los filtros actuales (salvo el de país).</p><div id="cTopC"></div></div>
+    <div class="card"><h3>Por continente</h3><p class="note">Pulsa una barra para filtrar.</p><div id="cCont"></div></div>
+    <div class="card"><h3>Por disciplina (campo Science-Metrix)</h3><p class="note">Pulsa una barra para filtrar.</p><div id="cField"></div></div>
+    <div class="card"><h3>Por tipo de institución</h3><p class="note">Clasificación automática a partir del nombre de la institución (véase Método).</p><div id="cType"></div></div>
+  </div>
+</section>
+
+<section class="view" id="v-paises">
+  <p class="ctx" id="ctx2"></p>
+  <div class="grid g2">
+    <div class="card"><h3>Ranking de países</h3><p class="note">Pulsa una fila para ver su perfil disciplinar. Ordena con los encabezados.</p><div class="scroll" id="tCtry"></div></div>
+    <div class="card"><h3 id="rcaT">Especialización disciplinar</h3><p class="note">Índice de especialización = peso de la disciplina en el país / peso en el mundo. Por encima de 1, el país está especializado en esa disciplina.</p><div id="cRCA"></div></div>
+  </div>
+</section>
+
+<section class="view" id="v-instituciones">
+  <p class="ctx" id="ctx3"></p>
+  <div class="grid g2">
+    <div class="card"><h3>Instituciones con más investigadores</h3><p class="note">Las 20 primeras con los filtros actuales. El filtro de disciplina se aplica a la disciplina principal de la institución.</p><div id="cInst"></div></div>
+    <div class="card"><h3>Buscar institución</h3><div class="row"><input type="search" id="qInst" placeholder="Nombre de la institución…"></div><div class="scroll" id="tInst"></div></div>
+  </div>
+</section>
+
+<section class="view" id="v-disciplinas">
+  <p class="ctx" id="ctx4"></p>
+  <div class="grid g2">
+    <div class="card"><h3>Disciplinas</h3><p class="note">Pulsa una para ver sus subcampos.</p><div id="cField2"></div></div>
+    <div class="card"><h3 id="subT">Subcampos</h3><p class="note">Recuento mundial de la disciplina seleccionada (sin filtros geográficos).</p><div class="scroll" id="cSub"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>Peso de cada continente en cada disciplina</h3><p class="note">Porcentaje de los investigadores de cada disciplina (fila) que pertenecen a cada continente. Más oscuro, más peso.</p><div id="heat"></div></div>
+</section>
+
+<section class="view" id="v-espana">
+  <p class="ctx">Este apartado no usa los filtros superiores salvo la tabla (trayectoria o año 2025). Las universidades se agrupan normalizando las variantes de nombre en Scopus; hospitales y centros CSIC se cuentan aparte.</p>
+  <div class="kpis" id="kpisES"></div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Universidades españolas</h3>
+      <div class="row"><span class="fl" style="flex-direction:row;align-items:center;gap:6px">Indicador
+        <select id="esMetric">
+          <option value="n">Investigadores (recuento)</option>
+          <option value="r">Por cada 100 PDI ETC</option>
+          <option value="oe">Observados / esperados según ramas</option>
+        </select></span></div>
+      <p class="note" id="esNote"></p>
+      <div id="cES"></div>
+    </div>
+    <div class="card"><h3>Tabla de universidades públicas y privadas</h3><p class="note">PDI ETC: SIIU 2024-2025, centros propios (solo universidades con datos). O/E: razón entre investigadores observados y los esperados por su composición del PDI por ramas.</p><div class="scroll" id="tES"></div></div>
+    <div class="card"><h3>España por tipo de institución</h3><div id="cESType"></div></div>
+    <div class="card"><h3>Especialización disciplinar de España</h3><p class="note">Peso de cada disciplina en España / peso en el mundo.</p><div id="cESRCA"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Investigadores con afiliación española</h3>
+    <div class="row"><input type="search" id="qES" placeholder="Nombre, institución o subcampo…" style="min-width:280px"><select id="esUni"></select><select id="esField"></select></div>
+    <div class="scroll" id="tESR"></div>
+  </div>
+</section>
+
+<section class="view method" id="v-metodo">
+  <div class="card">
+  <h3>Qué es este ranking</h3>
+  <p>La base de datos <i>Updated science-wide author databases of standardized citation indicators</i> (Ioannidis, Baas y Elsevier) calcula indicadores de citación estandarizados para todos los autores de Scopus. Incluye a quienes están entre los 100.000 primeros del mundo por el indicador compuesto c (con o sin autocitas) o en el 2 % superior de su subcampo (174 subcampos Science-Metrix). El indicador c combina citas, índice h, índice hm y citas como autor único, primero o último; no tiene en cuenta el número de publicaciones.</p>
+  <ul>
+    <li><b>Trayectoria:</b> citas recibidas entre 1996 y 2025 (243.949 investigadores).</li>
+    <li><b>Año 2025:</b> citas recibidas en 2025 (249.310 investigadores).</li>
+  </ul>
+  <h3>Cómo se han preparado los datos</h3>
+  <ul>
+    <li><b>Países y continentes:</b> código de país de Scopus (ISO 3166) agregado por continente.</li>
+    <li><b>Tipo de institución:</b> clasificación automática por palabras clave sobre el nombre de la institución (universidad; hospital o centro sanitario; centro de investigación u organismo público; empresa; otra). Es aproximada: algunas facultades de medicina, institutos universitarios o nombres en otros idiomas pueden quedar mal asignados.</li>
+    <li><b>Instituciones:</b> se muestran tal como las nombra Scopus, que a menudo distingue facultades o escuelas de la universidad matriz (por ejemplo, <i>Harvard Medical School</i>). Solo se listan las que tienen al menos 5 investigadores y se excluyen nombres genéricos sin universidad («College of Engineering»).</li>
+    <li><b>Indicadores:</b> «Top 10.000» es la proporción de investigadores entre los 10.000 primeros del mundo por indicador c; «con retractaciones», la proporción con al menos un artículo retractado según Retraction Watch; la autocitación media es la media del porcentaje de autocitas.</li>
+    <li><b>Variación respecto a 2025:</b> diferencia con la versión 8 del ranking (datos de agosto de 2025), disponible solo para totales por país.</li>
+    <li><b>España:</b> PDI equivalente a tiempo completo (ETC) y PDI por rama de enseñanza del SIIU, curso 2024-2025. La razón observados/esperados aplica a cada universidad las tasas nacionales de presencia en el listado de cada rama (estandarización indirecta), para descontar el efecto de su perfil disciplinar.</li>
+  </ul>
+  <h3>Cautelas</h3>
+  <ul>
+    <li>Es un indicador de impacto en citas de Scopus, no de calidad investigadora. Sus propios autores advierten contra su uso para ordenar instituciones sin ajustar por tamaño ni considerar la integridad.</li>
+    <li>Scopus asigna una sola afiliación por autor; los centros mixtos, hospitales universitarios y dobles afiliaciones distorsionan los recuentos institucionales.</li>
+    <li>Las Ciencias Sociales, Jurídicas y las Humanidades están infrarrepresentadas por la cobertura de Scopus y la forma de citar en esas áreas.</li>
+  </ul>
+  <h3>Fuentes</h3>
+  <ul>
+    <li>Ioannidis, J. P. A. (2026). <i>August 2026 data-update for "Updated science-wide author databases of standardized citation indicators"</i> (versión 9). Elsevier Data Repository. <a href="https://doi.org/10.17632/btchxktzyw.9">doi:10.17632/btchxktzyw.9</a>. Licencia CC BY-NC 3.0.</li>
+    <li>Ioannidis, J. P. A. (2025). Versión 8. <a href="https://doi.org/10.17632/btchxktzyw.8">doi:10.17632/btchxktzyw.8</a>.</li>
+    <li>Ministerio de Ciencia, Innovación y Universidades. SIIU, <a href="https://www.ciencia.gob.es/Ministerio/Estadisticas/SIIU/Personal.html">Estadística de Personal de las Universidades</a>, curso 2024-2025.</li>
+    <li>Mapa: Natural Earth vía <a href="https://github.com/topojson/world-atlas">world-atlas</a>.</li>
+  </ul>
+  </div>
+</section>
+</main>
+<footer>Elaboración: Ángel M. Delgado Vázquez · Biblioteca/CRAI, Universidad Pablo de Olavide · Ejemplo de análisis de datos con IA para la microcredencial «La IA en la investigación científica». Datos: Ioannidis (2026), CC BY-NC 3.0.</footer>
+<div class="tip" id="tip"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const WORLD = /*__WORLD__*/null;
+const nf = new Intl.NumberFormat('es-ES'); const pf = (v,d=1)=> (v*100).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d})+' %';
+const df = (v,d=1)=> v==null||isNaN(v)?'—':v.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+let dn=null; try{dn=new Intl.DisplayNames(['es'],{type:'region'})}catch(e){}
+const C = {}; DATA.countries.forEach(r=>{ let nm=r[1]; if(dn&&r[6]){try{nm=dn.of(r[6])||nm}catch(e){}} C[r[0]]={code:r[0],name:nm,cont:r[2],num:r[3],v8:[r[4],r[5]]}; });
+const FIELDS=DATA.fields, TYPES=DATA.types;
+const CONTS=[...new Set(Object.values(C).map(c=>c.cont))].filter(c=>c&&c!=='—').sort();
+const S={t:0,cont:'',ctry:'',field:-1,type:-1,sortC:'n',sortCd:-1,sortE:'n',sortEd:-1,esField:'',esUni:''};
+const tip=document.getElementById('tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.display='block';const x=Math.min(e.clientX+14,innerWidth-290);tip.style.left=x+'px';tip.style.top=(e.clientY+14)+'px'}
+function hideTip(){tip.style.display='none'}
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// ---------- filtros ----------
+function opt(sel,items,allLabel){sel.innerHTML=`<option value="">${allLabel}</option>`+items.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+const fCont=document.getElementById('fCont'),fCtry=document.getElementById('fCtry'),fField=document.getElementById('fField'),fType=document.getElementById('fType');
+opt(fCont,CONTS.map(c=>[c,c]),'Todos');
+function fillCtry(){const list=Object.values(C).filter(c=>c.code!=='zzz'&&(!S.cont||c.cont===S.cont)).sort((a,b)=>a.name.localeCompare(b.name,'es'));opt(fCtry,list.map(c=>[c.code,c.name]),'Todos');fCtry.value=S.ctry}
+fillCtry();
+opt(fField,FIELDS.map((f,i)=>[i,f]),'Todas');
+opt(fType,TYPES.map((t,i)=>[i,t]),'Todos');
+fCont.onchange=()=>{S.cont=fCont.value; if(S.ctry&&C[S.ctry].cont!==S.cont&&S.cont) S.ctry=''; fillCtry(); render()};
+fCtry.onchange=()=>{S.ctry=fCtry.value; render()};
+fField.onchange=()=>{S.field=fField.value===''?-1:+fField.value; render()};
+fType.onchange=()=>{S.type=fType.value===''?-1:+fType.value; render()};
+document.querySelectorAll('#segT button').forEach(b=>b.onclick=()=>{S.t=+b.dataset.t;document.querySelectorAll('#segT button').forEach(x=>x.classList.toggle('on',x===b));render()});
+document.getElementById('reset').onclick=()=>{Object.assign(S,{cont:'',ctry:'',field:-1,type:-1});fCont.value='';fillCtry();fField.value='';fType.value='';render()};
+function setCtry(code){S.ctry=S.ctry===code?'':code; if(S.ctry){S.cont='';fCont.value=''} fillCtry(); render()}
+
+// cubo: [t, code, f, ty, n, top, rw, hs, selfsum]
+function rows(skip){return DATA.cube.filter(r=>r[0]===S.t
+  &&(skip==='ctry'||skip==='geo'||!S.ctry||r[1]===S.ctry)
+  &&(skip==='geo'||!S.cont||(C[r[1]]&&C[r[1]].cont===S.cont))
+  &&(skip==='field'||S.field<0||r[2]===S.field)
+  &&(skip==='type'||S.type<0||r[3]===S.type))}
+function sum(rs){const o={n:0,top:0,rw:0,hs:0,ss:0};rs.forEach(r=>{o.n+=r[4];o.top+=r[5];o.rw+=r[6];o.hs+=r[7];o.ss+=r[8]});return o}
+function by(rs,keyf){const m=new Map();rs.forEach(r=>{const k=keyf(r);const o=m.get(k)||{n:0,top:0,rw:0,ss:0};o.n+=r[4];o.top+=r[5];o.rw+=r[6];o.ss+=r[8];m.set(k,o)});return m}
+function selDesc(){const p=[];if(S.ctry)p.push(C[S.ctry].name);else if(S.cont)p.push(S.cont);if(S.field>=0)p.push(FIELDS[S.field]);if(S.type>=0)p.push(TYPES[S.type]);return (p.length?p.join(' · '):'Todo el mundo')+' · '+(S.t?'año 2025':'trayectoria')}
+
+// ---------- barras horizontales ----------
+function hbar(el,items,o={}){
+  el=typeof el==='string'?document.getElementById(el):el;
+  const W=el.clientWidth||520, lw=o.lw||170, rh=o.rh||22, H=items.length*rh+(o.ref!=null?18:6);
+  const max=o.max||d3.max(items,d=>d.v)||1;
+  const x=d3.scaleLinear().domain([0,max]).range([0,W-lw-70]);
+  const svg=d3.create('svg').attr('width',W).attr('height',H).attr('role','img');
+  const g=svg.append('g').attr('transform',`translate(${lw},${o.ref!=null?14:2})`);
+  if(o.ref!=null){g.append('line').attr('x1',x(o.ref)).attr('x2',x(o.ref)).attr('y1',-6).attr('y2',items.length*rh).attr('stroke',css('--ink3')).attr('stroke-dasharray','3 3');
+    g.append('text').attr('x',x(o.ref)+4).attr('y',-4).text(o.refLabel||'')}
+  const row=g.selectAll('g.r').data(items).join('g').attr('class','r').attr('transform',(d,i)=>`translate(0,${i*rh})`);
+  row.append('text').attr('x',-8).attr('y',rh/2+4).attr('text-anchor','end').text(d=>d.l.length>28?d.l.slice(0,27)+'…':d.l)
+    .style('font-weight',d=>d.sel?'600':'400').style('fill',d=>d.sel?css('--ink'):css('--ink2'));
+  row.append('rect').attr('class','bar').attr('y',3).attr('height',rh-6).attr('rx',3).attr('width',d=>Math.max(1,x(d.v)))
+    .attr('fill',d=>d.sel||(o.noSel&&d.hl)?css('--accent'):(o.anySel?css('--muted2'):css('--muted')))
+    .on('mousemove',(e,d)=>showTip(e,`<b>${d.l}</b><br>${d.tip||(o.fmt||nf.format)(d.v)}`)).on('mouseleave',hideTip)
+    .on('click',(e,d)=>o.onClick&&o.onClick(d));
+  row.append('text').attr('x',d=>x(d.v)+5).attr('y',rh/2+4).text(d=>(o.fmt||nf.format)(d.v));
+  el.innerHTML='';el.appendChild(svg.node());
+}
+
+// ---------- mapa ----------
+const countriesGeo=topojson.feature(WORLD,WORLD.objects.countries).features.filter(f=>f.id!=='010');
+function drawMap(){
+  const el=document.getElementById('map');const W=el.clientWidth||900,H=Math.round(W*0.48);
+  const m=by(rows('geo'),r=>r[1]);const byNum=new Map();
+  m.forEach((v,k)=>{if(C[k]&&C[k].num!=null)byNum.set(C[k].num,{code:k,...v})});
+  const max=d3.max([...byNum.values()],d=>d.n)||1;
+  const col=d3.scaleSequentialLog([1,max],d3.interpolateRgb(css('--s100'),css('--s700')));
+  const proj=d3.geoNaturalEarth1().fitSize([W,H],{type:'Sphere'});const path=d3.geoPath(proj);
+  const svg=d3.create('svg').attr('width',W).attr('height',H).attr('role','img').attr('aria-label','Mapa de investigadores por país');
+  svg.append('path').attr('d',path({type:'Sphere'})).attr('fill','none').attr('stroke',css('--line'));
+  svg.append('g').selectAll('path').data(countriesGeo).join('path').attr('d',path)
+    .attr('fill',d=>{const v=byNum.get(+d.id);return v?col(v.n):css('--nodata')})
+    .attr('stroke',d=>{const v=byNum.get(+d.id);return v&&v.code===S.ctry?css('--ink'):css('--surface')}).attr('stroke-width',d=>{const v=byNum.get(+d.id);return v&&v.code===S.ctry?1.6:.5})
+    .style('cursor',d=>byNum.get(+d.id)?'pointer':'default')
+    .on('mousemove',(e,d)=>{const v=byNum.get(+d.id);showTip(e,v?`<b>${C[v.code].name}</b><br>${nf.format(v.n)} investigadores<br>Top 10.000: ${pf(v.top/v.n)}`:`${d.properties.name}<br>Sin investigadores`)})
+    .on('mouseleave',hideTip).on('click',(e,d)=>{const v=byNum.get(+d.id);if(v)setCtry(v.code)});
+  el.innerHTML='';el.appendChild(svg.node());
+  const lg=document.getElementById('mapLeg');const stops=[1,10,100,1000,10000,100000].filter(s=>s<=max*1.01);
+  lg.innerHTML='<div class="legend">Investigadores: '+stops.map(s=>`<span><span class="sw" style="background:${col(s)}"></span>${nf.format(s)}</span>`).join('')+`<span><span class="sw" style="background:${css('--nodata')}"></span>Ninguno</span></div>`;
+}
+
+// ---------- vistas ----------
+function kpi(id,list){document.getElementById(id).innerHTML=list.map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}
+function viewResumen(){
+  const all=sum(rows()), world=sum(DATA.cube.filter(r=>r[0]===S.t));
+  const nC=new Set(rows().filter(r=>r[1]!=='zzz').map(r=>r[1])).size;
+  document.getElementById('ctx1').innerHTML=`Selección: <b>${selDesc()}</b>`;
+  kpi('kpis',[[nf.format(all.n),'investigadores en la selección'],[pf(all.n/world.n),'del total mundial'],[nf.format(nC),'países'],[all.n?pf(all.top/all.n):'—','entre los 10.000 primeros'],[all.n?pf(all.rw/all.n):'—','con algún artículo retractado'],[all.n?df(all.ss/all.n*100)+' %':'—','autocitación media']]);
+  drawMap();
+  const mc=[...by(rows('ctry'),r=>r[1])].filter(([k])=>k!=='zzz').sort((a,b)=>b[1].n-a[1].n).slice(0,15);
+  hbar('cTopC',mc.map(([k,v])=>({k,l:C[k].name,v:v.n,sel:k===S.ctry,tip:`${nf.format(v.n)} investigadores · Top 10.000: ${pf(v.top/v.n)}`})),{anySel:!!S.ctry,onClick:d=>setCtry(d.k)});
+  const mk=[...by(rows('geo'),r=>C[r[1]]?C[r[1]].cont:'—')].filter(([k])=>k&&k!=='—').sort((a,b)=>b[1].n-a[1].n);
+  hbar('cCont',mk.map(([k,v])=>({k,l:k,v:v.n,sel:k===S.cont||(S.ctry&&C[S.ctry].cont===k)})),{anySel:!!(S.cont||S.ctry),onClick:d=>{S.cont=S.cont===d.k?'':d.k;S.ctry='';fCont.value=S.cont;fillCtry();render()}});
+  const mf=[...by(rows('field'),r=>r[2])].sort((a,b)=>b[1].n-a[1].n);
+  hbar('cField',mf.map(([k,v])=>({k,l:FIELDS[k],v:v.n,sel:k===S.field})),{anySel:S.field>=0,lw:210,onClick:d=>{S.field=S.field===d.k?-1:d.k;fField.value=S.field<0?'':S.field;render()}});
+  const mt=[...by(rows('type'),r=>r[3])].sort((a,b)=>b[1].n-a[1].n);
+  hbar('cType',mt.map(([k,v])=>({k,l:TYPES[k],v:v.n,sel:k===S.type})),{anySel:S.type>=0,lw:230,onClick:d=>{S.type=S.type===d.k?-1:d.k;fType.value=S.type<0?'':S.type;render()}});
+}
+function sortable(el,cols,data,sk,sd,onSort,onRow,selKey){
+  const s=[...data].sort((a,b)=>{const x=a[sk],y=b[sk];return (typeof x==='string'?x.localeCompare(y,'es'):(x??-1)-(y??-1))*sd});
+  el.innerHTML=`<table><thead><tr>${cols.map(c=>`<th class="${c.n?'n':''}" data-k="${c.k}">${c.l}${c.k===sk?(sd<0?' ▾':' ▴'):''}</th>`).join('')}</tr></thead><tbody>${s.map(r=>`<tr data-id="${r._id??''}" class="${selKey&&r._id===selKey?'sel':''}" style="${onRow?'cursor:pointer':''}">${cols.map(c=>`<td class="${c.n?'n':''}">${c.f?c.f(r[c.k],r):r[c.k]}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  el.querySelectorAll('th').forEach(th=>th.onclick=()=>onSort(th.dataset.k));
+  if(onRow)el.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>onRow(tr.dataset.id));
+}
+function viewPaises(){
+  document.getElementById('ctx2').innerHTML=`Selección: <b>${selDesc()}</b>`;
+  const m=by(rows('ctry'),r=>r[1]); const tot=[...m.values()].reduce((a,b)=>a+b.n,0);
+  const noFilt=S.field<0&&S.type<0;
+  const data=[...m].filter(([k])=>k!=='zzz').map(([k,v])=>({_id:k,name:C[k].name,cont:C[k].cont,n:v.n,share:v.n/tot,top:v.top/v.n,rw:v.rw/v.n,ch:noFilt&&C[k].v8[S.t]?(v.n-C[k].v8[S.t])/C[k].v8[S.t]:null}));
+  data.sort((a,b)=>b.n-a.n).forEach((d,i)=>d.pos=i+1);
+  sortable(document.getElementById('tCtry'),[{k:'pos',l:'#',n:1},{k:'name',l:'País'},{k:'cont',l:'Continente'},{k:'n',l:'Investigadores',n:1,f:v=>nf.format(v)},{k:'share',l:'% del total',n:1,f:v=>pf(v)},{k:'ch',l:'Var. vs 2025',n:1,f:v=>v==null?'—':(v>0?'+':'')+pf(v)},{k:'top',l:'Top 10.000',n:1,f:v=>pf(v)},{k:'rw',l:'Retract.',n:1,f:v=>pf(v)}],
+    data,S.sortC,S.sortCd,k=>{S.sortCd=S.sortC===k?-S.sortCd:(k==='name'||k==='cont'?1:-1);S.sortC=k;viewPaises()},id=>setCtry(id),S.ctry);
+  // especialización
+  const code=S.ctry||'esp';
+  const base=DATA.cube.filter(r=>r[0]===S.t&&(S.type<0||r[3]===S.type));
+  const w=by(base,r=>r[2]), c=by(base.filter(r=>r[1]===code),r=>r[2]);
+  const wt=[...w.values()].reduce((a,b)=>a+b.n,0), ct=[...c.values()].reduce((a,b)=>a+b.n,0);
+  document.getElementById('rcaT').textContent='Especialización disciplinar: '+C[code].name+(S.ctry?'':' (por defecto; elige un país)');
+  const items=[...w].filter(([k,v])=>v.n>=50).map(([k,v])=>{const cv=(c.get(k)||{n:0}).n;return {k,l:FIELDS[k],v:ct?(cv/ct)/(v.n/wt):0,tip:`${nf.format(cv)} investigadores (${pf(ct?cv/ct:0)} del país frente a ${pf(v.n/wt)} del mundo)`,sel:false,hl:true}}).sort((a,b)=>b.v-a.v);
+  hbar('cRCA',items,{lw:210,ref:1,refLabel:'1 = media mundial',fmt:v=>df(v,2),noSel:false,anySel:false});
+  document.querySelectorAll('#cRCA rect.bar').forEach((r,i)=>r.setAttribute('fill',items[i].v>=1?css('--accent'):css('--muted')));
+}
+function instFiltered(){
+  const ti=S.t?5:4;
+  return DATA.institutions.filter(r=>r[ti]>0&&(!S.ctry||r[1]===S.ctry)&&(!S.cont||(C[r[1]]&&C[r[1]].cont===S.cont))&&(S.type<0||r[2]===TYPES[S.type])&&(S.field<0||r[3]===FIELDS[S.field]));
+}
+function viewInst(){
+  const ti=S.t?5:4; const list=instFiltered().sort((a,b)=>b[ti]-a[ti]);
+  document.getElementById('ctx3').innerHTML=`Selección: <b>${selDesc()}</b> · ${nf.format(list.length)} instituciones con 5 o más investigadores`;
+  hbar('cInst',list.slice(0,20).map(r=>({l:r[0],v:r[ti],tip:`${C[r[1]]?C[r[1]].name:''} · ${r[2]}<br>${nf.format(r[ti])} investigadores · disciplina principal: ${r[3]}`})),{lw:250});
+  const q=document.getElementById('qInst').value.trim().toLowerCase();
+  const rowsI=list.filter(r=>!q||r[0].toLowerCase().includes(q)).slice(0,300).map((r,i)=>({pos:i+1,name:r[0],ctry:C[r[1]]?C[r[1]].name:'',type:r[2],field:r[3],n:r[ti],top:r[ti+2]}));
+  sortable(document.getElementById('tInst'),[{k:'pos',l:'#',n:1},{k:'name',l:'Institución'},{k:'ctry',l:'País'},{k:'type',l:'Tipo'},{k:'field',l:'Disciplina principal'},{k:'n',l:'Investig.',n:1,f:v=>nf.format(v)},{k:'top',l:'Top 10.000',n:1}],rowsI,'n',-1,()=>{},null);
+}
+document.getElementById('qInst').oninput=()=>viewInst();
+function viewDisc(){
+  document.getElementById('ctx4').innerHTML=`Selección: <b>${selDesc()}</b>`;
+  const mf=[...by(rows('field'),r=>r[2])].sort((a,b)=>b[1].n-a[1].n);
+  hbar('cField2',mf.map(([k,v])=>({k,l:FIELDS[k],v:v.n,sel:k===S.field})),{anySel:S.field>=0,lw:210,onClick:d=>{S.field=S.field===d.k?-1:d.k;fField.value=S.field<0?'':S.field;render()}});
+  const fsel=S.field>=0?FIELDS[S.field]:(mf[0]?FIELDS[mf[0][0]]:FIELDS[0]);
+  document.getElementById('subT').textContent='Subcampos de '+fsel.toLowerCase();
+  const subs=DATA.subfields[S.t?'single':'career'].filter(r=>r[0]===fsel).sort((a,b)=>b[2]-a[2]);
+  hbar('cSub',subs.map(r=>({l:r[1],v:r[2]})),{lw:250});
+  // heatmap campo x continente
+  const base=DATA.cube.filter(r=>r[0]===S.t&&(S.type<0||r[3]===S.type));
+  const conts=CONTS.filter(c=>c!=='Antártida');
+  const M={};base.forEach(r=>{const ct=C[r[1]]?C[r[1]].cont:null;if(!conts.includes(ct))return;(M[r[2]]=M[r[2]]||{});M[r[2]][ct]=(M[r[2]][ct]||0)+r[4]});
+  const fl=Object.keys(M).map(Number).sort((a,b)=>d3.sum(Object.values(M[b]))-d3.sum(Object.values(M[a])));
+  const el=document.getElementById('heat');const W=el.clientWidth||900,lw=230,cw=Math.min(120,(W-lw)/conts.length),rh=22,H=fl.length*rh+30;
+  const col=d3.scaleSequential([0,1],d3.interpolateRgb(css('--s100'),css('--s700')));
+  const svg=d3.create('svg').attr('width',W).attr('height',H);
+  conts.forEach((c,j)=>svg.append('text').attr('x',lw+j*cw+cw/2).attr('y',14).attr('text-anchor','middle').text(c));
+  fl.forEach((f,i)=>{const tot=d3.sum(Object.values(M[f]));const y=22+i*rh;
+    svg.append('text').attr('x',lw-8).attr('y',y+rh/2+4).attr('text-anchor','end').text(FIELDS[f]);
+    conts.forEach((c,j)=>{const v=(M[f][c]||0)/tot;
+      svg.append('rect').attr('x',lw+j*cw+1).attr('y',y+1).attr('width',cw-2).attr('height',rh-2).attr('rx',2).attr('fill',v?col(v):css('--nodata'))
+        .on('mousemove',e=>showTip(e,`<b>${FIELDS[f]}</b> · ${c}<br>${pf(v)} (${nf.format(M[f][c]||0)} investigadores)`)).on('mouseleave',hideTip);
+      svg.append('text').attr('x',lw+j*cw+cw/2).attr('y',y+rh/2+4).attr('text-anchor','middle').style('fill',v>0.45?'#fff':css('--ink2')).style('pointer-events','none').text(v>=0.005?Math.round(v*100)+'%':'')})});
+  el.innerHTML='';el.appendChild(svg.node());
+}
+// ---------- España ----------
+const ESU=DATA.spain_universities.map(r=>({_id:r[0],name:r[0],nc:r[1],ns:r[2],etc:r[3],oec:r[4],oes:r[5],pub:r[8]}));
+function viewES(){
+  const t=S.t; const esR=DATA.spain_researchers.filter(r=>r[0]===t);
+  const world=sum(DATA.cube.filter(r=>r[0]===t)).n;
+  const rk=[...by(DATA.cube.filter(r=>r[0]===t),r=>r[1])].filter(([k])=>k!=='zzz').sort((a,b)=>b[1].n-a[1].n).findIndex(([k])=>k==='esp')+1;
+  const uniN=esR.filter(r=>r[3]).length;
+  kpi('kpisES',[[nf.format(esR.length),'investigadores con afiliación española'],[pf(esR.length/world),'del total mundial'],[rk+'.º','puesto de España por número'],[pf(esR.filter(r=>r[7]<=10000).length/esR.length),'entre los 10.000 primeros'],[pf(uniN/esR.length,0),'en universidades']]);
+  const metric=document.getElementById('esMetric').value;
+  const val=u=>metric==='n'?(t?u.ns:u.nc):metric==='r'?(t?u.ns:u.nc)/u.etc*100:(t?u.oes:u.oec);
+  const pubs=ESU.filter(u=>u.pub);
+  const list=(metric==='n'?ESU:pubs).filter(u=>val(u)!=null&&!isNaN(val(u))).sort((a,b)=>val(b)-val(a)).slice(0,25);
+  const ref=metric==='r'?d3.sum(pubs,u=>t?u.ns:u.nc)/d3.sum(pubs,u=>u.etc)*100:metric==='oe'?1:null;
+  document.getElementById('esNote').textContent=metric==='n'?'Las 25 universidades con más investigadores (públicas y privadas con datos SIIU).':metric==='r'?'Las 25 universidades públicas con mayor tasa. Línea: media de las 48 públicas.':'Las 25 universidades públicas con mayor razón observados/esperados. Línea: 1 = lo esperado por su composición por ramas.';
+  hbar('cES',list.map(u=>({l:u.name,v:val(u),tip:`${nf.format(t?u.ns:u.nc)} investigadores · ${df(u.etc,0)} PDI ETC`})),{lw:200,ref,refLabel:metric==='r'?'media públicas':'esperado',fmt:v=>metric==='n'?nf.format(v):df(v,2)});
+  const data=ESU.map(u=>({...u,n:t?u.ns:u.nc,r:(t?u.ns:u.nc)/u.etc*100,oe:t?u.oes:u.oec,tipo:u.pub?'Pública':'Privada'}));
+  sortable(document.getElementById('tES'),[{k:'name',l:'Universidad'},{k:'tipo',l:'Tipo'},{k:'n',l:'Investig.',n:1},{k:'etc',l:'PDI ETC',n:1,f:v=>df(v,0)},{k:'r',l:'Por 100 ETC',n:1,f:v=>df(v,2)},{k:'oe',l:'O/E ramas',n:1,f:v=>v==null?'—':df(v,2)}],
+    data,S.sortE,S.sortEd,k=>{S.sortEd=S.sortE===k?-S.sortEd:(k==='name'||k==='tipo'?1:-1);S.sortE=k;viewES()},null);
+  const bt=d3.rollups(esR,v=>v.length,r=>r[4]).sort((a,b)=>b[1]-a[1]);
+  hbar('cESType',bt.map(([k,v])=>({l:k,v,tip:`${nf.format(v)} investigadores (${pf(v/esR.length)})`})),{lw:230});
+  const base=DATA.cube.filter(r=>r[0]===t);const w=by(base,r=>r[2]),c=by(base.filter(r=>r[1]==='esp'),r=>r[2]);
+  const wt=d3.sum([...w.values()],v=>v.n),ct=d3.sum([...c.values()],v=>v.n);
+  const items=[...w].filter(([k,v])=>v.n>=50).map(([k,v])=>{const cv=(c.get(k)||{n:0}).n;return {l:FIELDS[k],v:(cv/ct)/(v.n/wt),tip:`${nf.format(cv)} investigadores (${pf(cv/ct)} de España frente a ${pf(v.n/wt)} del mundo)`}}).sort((a,b)=>b.v-a.v);
+  hbar('cESRCA',items,{lw:210,ref:1,refLabel:'1 = media mundial',fmt:v=>df(v,2)});
+  document.querySelectorAll('#cESRCA rect.bar').forEach((r,i)=>r.setAttribute('fill',items[i].v>=1?css('--accent'):css('--muted')));
+  // explorador
+  const su=document.getElementById('esUni'),sf=document.getElementById('esField');
+  if(!su.options.length){opt(su,[...new Set(DATA.spain_researchers.map(r=>r[3]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es')).map(u=>[u,u]),'Todas las universidades');opt(sf,FIELDS.filter(f=>DATA.spain_researchers.some(r=>r[5]===f)).map(f=>[f,f]),'Todas las disciplinas')}
+  const q=document.getElementById('qES').value.trim().toLowerCase();
+  const rr=esR.filter(r=>(!su.value||r[3]===su.value)&&(!sf.value||r[5]===sf.value)&&(!q||(r[1]+' '+r[2]+' '+r[6]).toLowerCase().includes(q))).sort((a,b)=>a[7]-b[7]);
+  const shown=rr.slice(0,300).map(r=>({name:r[1],inst:r[2],field:r[6],rank:r[7],pct:r[8],self:r[9],h:r[10],fy:r[11]}));
+  const box=document.getElementById('tESR');
+  sortable(box,[{k:'rank',l:'Puesto mundial',n:1,f:v=>nf.format(v)},{k:'name',l:'Investigador/a'},{k:'inst',l:'Institución (Scopus)'},{k:'field',l:'Subcampo'},{k:'pct',l:'Percentil subcampo',n:1,f:v=>v<0.01?'< 0,01 %':df(v,2)+' %'},{k:'self',l:'Autocitas',n:1,f:v=>df(v,1)+' %'},{k:'h',l:'h',n:1},{k:'fy',l:'1.ª publ.',n:1}],shown,'rank',1,()=>{},null);
+  box.insertAdjacentHTML('beforeend',`<p class="note" style="margin-top:6px">${nf.format(rr.length)} resultados${rr.length>300?'; se muestran los 300 primeros por puesto mundial':''}.</p>`);
+}
+['esMetric','qES','esUni','esField'].forEach(id=>document.getElementById(id).addEventListener('input',()=>viewES()));
+
+// ---------- navegación ----------
+const VIEWS={resumen:viewResumen,paises:viewPaises,instituciones:viewInst,disciplinas:viewDisc,espana:viewES,metodo:()=>{}};
+function cur(){const h=location.hash.slice(1);return VIEWS[h]?h:'resumen'}
+function render(){const v=cur();document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  fCtry.value=S.ctry; document.querySelector('.filters').style.display=v==='metodo'?'none':'';
+  ['fCont','fCtry','fField','fType','reset'].forEach(id=>{const el=document.getElementById(id);(el.closest('label')||el).style.display=v==='espana'?'none':''});
+  VIEWS[v]()}
+addEventListener('hashchange',render);let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,150)});
+render();
+</script>
+</body>
+</html>
